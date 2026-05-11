@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+python-dotenv
+bcrypt
+sqlite3-api
+requests
+numpy
+pandas
+scikit-learn
+transformers
+torch
+lyricsgenius
