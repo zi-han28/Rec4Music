@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 
-from BERT_analysis import SentimentAnalyzer
 from genius_api import get_lyrics_with_info
 from engine import ReccobeatsAPI, valid_recommendations, get_cbf_recommendations_from_favourites
 from auth import (
@@ -79,12 +78,59 @@ async def get_track(track_id: str):
             "release_date": track["album"]["release_date"],
             "album_image": track["album"]["images"][0]["url"] if track["album"]["images"] else None,
             "spotify_url": track["external_urls"]["spotify"],
-            "embed_url": f"https://open.spotify.com/embed/track/{track['id']}"
+            "embed_url": f"https://open.spotify.com/embed/track/{track['id']}",
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/track/{track_id}/lyrics")
+async def get_track_lyrics(track_id: str):
+    try:
+        # First get the track details to get track name and artist
+        track = sp.track(track_id)
+        track_name = track["name"]
+        artist_name = track["artists"][0]["name"]
+        
+        # Fetch lyrics from Genius
+        lyrics_data = get_lyrics_with_info(track_name, artist_name)
+        
+        if lyrics_data and lyrics_data.get('lyrics'):
+            return {
+                "lyrics": lyrics_data['lyrics'],
+                "url": lyrics_data.get('url'),
+            }
+        else:
+            return {
+                "lyrics": None,
+                "error": lyrics_data.get('error', 'Lyrics not found')
+            }
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching lyrics: {str(e)}")
 
+@app.get("/track/{track_id}/recommendations")
+async def get_track_recommendations(track_id: str, k: int = 6):
+    try:
+        api = ReccobeatsAPI()
+        recs = api.get_valid_recommendations(
+            spotify_track_id=track_id,
+            final_recommendations_count=k
+        )
+        return {
+            "recommendations": [
+                {
+                    "track_id": r["track_id"],
+                    "track_name": r["track_name"],
+                    "artists": r["artists"],
+                    "similarity_score": r["similarity_score"],
+                    "popularity": r.get("popularity")
+                }
+                for r in recs
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching recommendations: {str(e)}")
+    
 @app.get("/health")
 async def health():
     return {"status": "ok"}

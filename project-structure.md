@@ -38,6 +38,55 @@ lyricsgenius
     - __init__
     - _clean_text
     - analyze
+- 📁 app-frontend/
+  - 📄 AGENTS.md
+  - 📄 CLAUDE.md
+  - 📄 README.md
+  - 📁 app/
+    - 📄 favicon.ico
+    - 📄 globals.css
+    - 📄 layout.tsx
+      - Imports:
+        - import { Geist, Geist_Mono } from "next/font/google"
+      - Exports:
+        - metadata
+      - Functions:
+        - RootLayout
+    - 📄 page.tsx
+      - Imports:
+        - import { useState } from 'react'
+        - import Image from 'next/image'
+        - import { useRouter } from 'next/navigation'
+      - Functions:
+        - SearchPage
+        - handleSearch
+    - 📁 track/
+      - 📁 [id]/
+        - 📄 page.tsx
+          - Imports:
+            - import { useRouter } from 'next/navigation'
+            - import { useEffect, useState } from 'react'
+            - import { useParams } from 'next/navigation'
+            - import Image from 'next/image'
+          - Functions:
+            - SongPage
+            - fetchTrack
+            - fetchRecommendations
+            - fetchLyrics
+            - CloseLyrics
+  - 📄 eslint.config.mjs
+  - 📄 next-env.d.ts
+  - 📄 next.config.ts
+  - 📄 package-lock.json
+  - 📄 package.json
+  - 📄 postcss.config.mjs
+  - 📁 public/
+    - 📄 file.svg
+    - 📄 globe.svg
+    - 📄 next.svg
+    - 📄 vercel.svg
+    - 📄 window.svg
+  - 📄 tsconfig.json
 - 📄 auth.py
   - Imports:
     - import sqlite3
@@ -116,45 +165,10 @@ lyricsgenius
     - import dotenv.load_dotenv
     - import spotipy
     - import spotipy.oauth2.SpotifyClientCredentials
-    - import BERT_analysis.SentimentAnalyzer
     - import genius_api.get_lyrics_with_info
     - import engine.ReccobeatsAPI
     - import engine.valid_recommendations
     - import engine.get_cbf_recommendations_from_favourites
     - import auth.(
-- 📁 reccobeats-frontend/
-  - 📄 AGENTS.md
-  - 📄 CLAUDE.md
-  - 📄 README.md
-  - 📁 app/
-    - 📄 favicon.ico
-    - 📄 globals.css
-    - 📄 layout.tsx
-      - Imports:
-        - import { Geist, Geist_Mono } from "next/font/google"
-      - Exports:
-        - metadata
-      - Functions:
-        - RootLayout
-    - 📄 page.tsx
-      - Imports:
-        - import { useState } from 'react'
-        - import Image from 'next/image'
-        - import { useRouter } from 'next/navigation'
-      - Functions:
-        - SearchPage
-        - handleSearch
-  - 📄 eslint.config.mjs
-  - 📄 next-env.d.ts
-  - 📄 next.config.ts
-  - 📄 package-lock.json
-  - 📄 package.json
-  - 📄 postcss.config.mjs
-  - 📁 public/
-    - 📄 file.svg
-    - 📄 globe.svg
-    - 📄 next.svg
-    - 📄 vercel.svg
-    - 📄 window.svg
-  - 📄 tsconfig.json
+- 📄 project-structure.md
 - 📄 requirements.txt

@@ -117,12 +117,6 @@ class ReccobeatsAPI:
                 
             print(f"Processed {min(i + batch_size, len(reccobeats_ids))} / {len(reccobeats_ids)} Reccobeats IDs")
             time.sleep(0.2)
-            
-            # try:
-            # except Exception as e:
-            #     print(f"Request error for batch starting at index {i}: {e}")
-            #     time.sleep(1.0)
-                # Retry logic omitted for brevity, keeping main flow clean
                 
         return all_features
     
@@ -275,7 +269,7 @@ class ReccobeatsAPI:
                 features, _= self.get_audio_features(spotify_track_id)
                 if not features:
                     return []
-            original_vector = self.extract_audio_features_vector(original_features)
+            original_vector = self.extract_audio_features_vector(features)
             
             
             # 2. Get initial recommendations
@@ -354,11 +348,11 @@ class ReccobeatsAPI:
         min_similarity: float = 0.7,
         **filters
     ) -> List[Dict]:
-        """
-        Wrapper around get_enhanced_recommendations that retries with
-        different popularity tiers until final_recommendations_count
-        songs above min_similarity are collected.
-        """
+     
+        # Wrapper around get_enhanced_recommendations that retries with
+        # different popularity tiers until final_recommendations_count
+        # songs above min_similarity are collected.
+     
         qualified_recs = []
         seen_track_ids = set()
         # 
