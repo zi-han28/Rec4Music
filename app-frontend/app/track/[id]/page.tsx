@@ -1,3 +1,4 @@
+// app-frontend/app/track/[id]
 'use client';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -37,6 +38,7 @@ export default function SongPage(){
     const [recommendations, setRecommendations] = useState<Recommendations[]>([]);
     const [loadingRecs, setLoadingRecs] = useState(true);
     const [recsError, setRecsError] = useState('');
+    const [favouritedIds, setFavouriteIds] = useState <Set<string>>(new Set());
 
     useEffect(() =>{
         const fetchTrack = async ()=>{
@@ -54,6 +56,59 @@ export default function SongPage(){
 
         if(id) fetchTrack();
     }, [id])
+
+      const toggleFavourite = async (track: Track, e: React.MouseEvent) => {
+        e.stopPropagation(); // don't trigger the card's onClick navigation
+    
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          router.push('/login');
+          return;
+        }
+    
+        const isFav = favouritedIds.has(track.track_id);
+        try{
+          if (isFav){
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favourites?track_id=${track.track_id}`,
+              {
+                method: 'DELETE',
+                headers: {Authorization: `Bearer ${token}`},
+              }
+            );
+            if (!res.ok) {
+                const errData = await res.json().catch(() => null)
+                throw new Error (errData?.detail || 'Failed to remove favourited track');
+            }
+            setFavouriteIds((prev) => {
+              const next = new Set(prev);
+              next.delete(track.track_id);
+              return next;
+            });
+          } else {
+            const res = await fetch (`${process.env.NEXT_PUBLIC_API_URL}/favourites`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                track_id: track.track_id,
+                track_name: track.track_name,
+                artist_name: track.artist,
+                album_name: track.album,
+                album_image: track.album_image,
+              }),
+            });
+            if (!res.ok){
+                const errData = await res.json().catch(()=>null)
+                throw new Error(errData?.detail ||'Failed to add new favourite');
+            } 
+            setFavouriteIds((prev) => new Set(prev).add(track.track_id));
+          }
+        }catch(err){
+          console.error(err)
+        }
+      }
     
     // load recommendations
     useEffect(() => {
@@ -124,6 +179,9 @@ export default function SongPage(){
                             )}
                 <p className="text-gray-400 mt-1">{track.album}</p>
                 <p className="text-gray-500 text-sm mt-1">{track.artist}</p>
+
+                <button onClick={(e) => toggleFavourite(track, e)} type="button" className="bg-violet-500 hover:bg-violet-600 focus:outline-2 focus:outline-offset-2 focus:outline-violet-500 active:bg-violet-700 font-medium rounded  px-4 py-2.5 text-center leading-5 cursor-pointer mt-4 ">
+                    {favouritedIds.has(track.track_id) ? '❤️' : '🤍'}</button>
 
                 <div className="mt-6 rounded-lg overflow-hidden">
                     <iframe

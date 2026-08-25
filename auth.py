@@ -1,8 +1,8 @@
 # auth.py (updated version)
 import sqlite3
 import bcrypt
-import streamlit as st
 import json
+
 
 # Database file name (will be created automatically)
 DB_NAME = "users.db"
@@ -41,8 +41,7 @@ def create_user(username, password):
     hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
     
     try:
-        c.execute('INSERT INTO users (username, password, favourites) VALUES (?, ?, ?)', 
-                 (username, hashed_pw, '[]'))
+        c.execute('INSERT INTO users (username, password, favourites) VALUES (?, ?, ?)', (username, hashed_pw, '[]'))
         conn.commit()
         success = True
         msg = "Account created successfully! Please login."
@@ -123,8 +122,7 @@ def remove_from_favourites(username, track_id):
     c = conn.cursor()
     
     try:
-        c.execute('UPDATE users SET favourites = ? WHERE username = ?', 
-                 (json.dumps(favourites), username))
+        c.execute('UPDATE users SET favourites = ? WHERE username = ?', (json.dumps(favourites), username))
         conn.commit()
         success = True
         msg = "Removed from favourites!"
