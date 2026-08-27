@@ -19,7 +19,6 @@ export default function SearchPage() {
   const [results, setResults] = useState<Track[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [favouritedIds, setFavouriteIds] = useState <Set<string>>(new Set());
   const router = useRouter();
   
 

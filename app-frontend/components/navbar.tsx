@@ -11,10 +11,10 @@ export default function Navbar() {
 
   return (
     <nav className="bg-gray-950 border-b border-gray-800">
-      <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
+      <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-9 p-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center">
-          <span className="self-center text-2xl font-semibold text-white">
+        <Link href="/" className="flex">
+          <span className="text-2xl font-semibold text-white">
             Rec4Music
           </span>
         </Link>

@@ -393,16 +393,50 @@ class ReccobeatsAPI:
         
         qualified_recs.sort(key=lambda x: x['similarity_score'], reverse=True)
         return qualified_recs[:final_recommendations_count]
+
+def analyse_favourites(
+    user_favourites: List [Dict],
+    exclude_ids: set = None
+) -> List [Dict]:
+    if not user_favourites:
+        return []
+
+    api = ReccobeatsAPI()
+        
+    feature_keys = [
+            'danceability', 'energy', 'valence', 'tempo', 'loudness',
+            'acousticness', 'instrumentalness', 'liveness', 'speechiness',
+            'key', 'mode']
+
+    fav_features = []
+
+    for fav in user_favourites:
+        track_id = fav.get('track_id', '')
+        if not track_id:
+            continue
+        features, _= api.get_audio_features(track_id)
+        fav_features.append(features)
+
+    if not fav_features: 
+        return []
+
+    fyp_profile = {}
+    for key in feature_keys:
+        values = [f[key] for f in fav_features if key in f and f[key] is not None]
+        if values:
+            fyp_profile[key] = sum(values) / len(values)
+
+
+
+
+
     
-def get_cbf_recommendations_from_favourites(
+def get_recommendations_from_favourites(
     user_favourites: List[Dict],
     k: int = 6,
     exclude_ids: set = None
 ) -> List[Dict]:
-    """
-    Scoring uses the same formula as the song-page CBF:
-      weighted = 0.9 * cosine_similarity + 0.1 * (reccobeats_popularity / 100)
-    """
+    
     if not user_favourites:
         return []
     

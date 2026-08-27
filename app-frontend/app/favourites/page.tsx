@@ -19,6 +19,7 @@ export default function FavouritesPage() {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const router = useRouter();
 
+//   fetch favourties
   useEffect(() => {
     const fetchFavourites = async () => {
       const token = localStorage.getItem('access_token');
@@ -29,7 +30,7 @@ export default function FavouritesPage() {
 
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favourites`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {Authorization: `Bearer ${token}`},
         });
 
         if (res.status === 401) {
@@ -38,7 +39,10 @@ export default function FavouritesPage() {
           return;
         }
 
-        if (!res.ok) throw new Error('Failed to load favourites');
+        if (!res.ok){
+            const errData = await res.json().catch(() => null);
+            throw new Error(errData?.detail || 'Failed to load favourites');
+        } 
 
         const data = await res.json();
         setFavourites(data.favourites);
@@ -117,8 +121,7 @@ export default function FavouritesPage() {
               >
                 <div
                   className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer"
-                  onClick={() => router.push(`/track/${track.track_id}`)}
-                >
+                  onClick={() => router.push(`/track/${track.track_id}`)}>
                   {track.album_image ? (
                     <Image
                       src={track.album_image}
@@ -142,7 +145,7 @@ export default function FavouritesPage() {
                   disabled={removingId === track.track_id}
                   className="text-red-400 hover:text-red-300 text-sm px-3 py-2
                              disabled:opacity-50 cursor-pointer">
-                  {removingId === track.track_id ? '...' : '❌ Remove'}
+                  {removingId === track.track_id ? '...' : '❌'}
                 </button>
               </div>
             ))}

@@ -12,7 +12,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 
 from genius_api import get_lyrics_with_info
-from engine import ReccobeatsAPI, valid_recommendations, get_cbf_recommendations_from_favourites
+from engine import ReccobeatsAPI, valid_recommendations, get_recommendations_from_favourites
 from auth import (
     init_db, create_user, authenticate_user, 
     get_user_favourites, add_to_favourites, 
