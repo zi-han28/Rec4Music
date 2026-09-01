@@ -1,3 +1,6 @@
+from urllib import response
+import random
+from altair import param
 import requests
 import numpy as np
 import pandas as pd
@@ -154,7 +157,7 @@ class ReccobeatsAPI:
             'instrumentalness': {'range': (0, 1), 'default': 0.5},
             'liveness': {'range': (0, 1), 'default': 0.5},
             'speechiness': {'range': (0, 1), 'default': 0.5},
-            'key': {'range': (0, 11), 'default': 0},
+            'key': {'range': (-1, 11), 'default': -1},
             'mode': {'range': (0, 1), 'default': 1}
         }
         
@@ -179,14 +182,19 @@ class ReccobeatsAPI:
     
     def get_recommendations(
         self, 
-        spotify_track_id: str,
+        spotify_track_id: Optional[str] = None,
+        seed_track_ids: Optional[List[str]] = None,
         size: int = 6,  # Default size updated to 6
         **kwargs
     ) -> Optional[List[Dict[str, Any]]]:
         """Get track recommendations based on a Spotify track ID."""
+        seeds = seed_track_ids if seed_track_ids else([spotify_track_id] if spotify_track_id else [])
+        if not seeds:
+            return None
+        
         params = {
             'size': size,
-            'seeds': spotify_track_id
+            'seeds': ','.join(seeds)
         }
         
         # Add optional filters
@@ -203,10 +211,10 @@ class ReccobeatsAPI:
             response = requests.get(url, headers=self.headers, params=params, timeout=15)
             response.raise_for_status()
             recommendations_data = response.json()
-            if "content" in recommendations_data:
-                return recommendations_data["content"]
-            else:
-                return []
+
+            # if content doesn't exist return []
+            return recommendations_data.get("content", [])
+    
         except Exception as e:
             print(f"Error fetching recommendations: {e}")
             return None
@@ -402,34 +410,52 @@ def analyse_favourites(
         return []
 
     api = ReccobeatsAPI()
-        
+    # to find the most prominent feature
     feature_keys = [
             'danceability', 'energy', 'valence', 'tempo', 'loudness',
-            'acousticness', 'instrumentalness', 'liveness', 'speechiness',
-            'key', 'mode']
+            'acousticness', 'instrumentalness', 'liveness', 'speechiness',]
 
-    fav_features = []
+    feature_vectors = []
+    fav_trackID = []
 
     for fav in user_favourites:
         track_id = fav.get('track_id', '')
+        fav_trackID.append(track_id)
         if not track_id:
             continue
         features, _= api.get_audio_features(track_id)
-        fav_features.append(features)
+        if features:
+            feature_vectors.append(features)
 
-    if not fav_features: 
-        return []
+    # Stack into a matrix: rows = songs, columns = features
+    matrix = np.array(feature_vectors)
+    mean = matrix.mean(axis=0)
+    stdeviation = matrix.std(axis=0)
 
-    fyp_profile = {}
-    for key in feature_keys:
-        values = [f[key] for f in fav_features if key in f and f[key] is not None]
-        if values:
-            fyp_profile[key] = sum(values) / len(values)
+    results = []
+    for i, key in enumerate(feature_keys):
+        results.append({
+            'feature': key,
+            'mean': float(mean[i]),
+            'std': float(stdeviation[i]),
+        })
+    results.sort(key=lambda x: x['std'])
 
+    All_keys = ['danceability', 'energy', 'valence', 'tempo', 'loudness',
+                'acousticness', 'instrumentalness', 'liveness', 'speechiness','key','mode']
+    taste_profile = {}
+    for key in All_keys:
+        values = [f[key] for f in feature_vectors]
 
+    
 
-
-
+    return{
+        'fav_trackIDs': fav_trackID,
+        'std_factor': results[0]['feature'] if results else None,
+        'mean_factor': results[0]['mean'] if results else None,
+        'all_features': results,
+        'track_count': len(feature_vectors)
+    }
     
 def get_recommendations_from_favourites(
     user_favourites: List[Dict],
@@ -441,62 +467,42 @@ def get_recommendations_from_favourites(
         return []
     
     api = ReccobeatsAPI()
-    
-    feature_keys = [
-        'danceability', 'energy', 'valence', 'tempo', 'loudness',
-        'acousticness', 'instrumentalness', 'liveness', 'speechiness',
-        'key', 'mode'
-    ]
 
-    fav_features = []
-    fav_ids_for_seeds = []
-    
-    for fav in user_favourites:
-        track_id = fav.get('track_id', '')
-        if not track_id:
-            continue
-        features, _ = api.get_audio_features(track_id)
-        if features:
-            fav_features.append(api.extract_audio_features_vector(features))
-            fav_ids_for_seeds.append(track_id)
-    
-    if not fav_features:
+    # get std_factor of fav tracks
+    fav_analysis = analyse_favourites(user_favourites)
+    fav_paramter = fav_analysis['std_factor']
+    input_parameter = fav_analysis['mean_factor']
+
+    # extract trackIDs from favourites
+    fav_seeds = fav_analysis['fav_trackIDs']
+    if len(fav_seeds)>=5:
+        fav_seeds = random.sample(fav_seeds, 5)
+        return fav_seeds
+
+    if not fav_seeds:
         return []
-    
-    # 2. Average into taste profile
-    taste_profile = {}
-    for key in feature_keys:
-        values = [f[key] for f in fav_features if key in f and f[key] is not None]
-        if values:
-            taste_profile[key] = sum(values) / len(values)
-    
-    # 3. Seed recommendations from up to 3 favourites
-    seed_ids = fav_ids_for_seeds[:3]
-    seen_ids = set(exclude_ids) if exclude_ids else set()
-    seen_ids.update(f.get('track_id', '') for f in user_favourites)
-    
-    all_recs = []
-    
-    for seed_id in seed_ids:
-        try:
-            recs = api.get_enhanced_recommendations(
-                spotify_track_id=seed_id,
-                initial_recommendations_count=100,
-                final_recommendations_count=k,
-                original_features=taste_profile
-            )
-            if recs:
-                for rec in recs:
-                    if rec['track_id'] not in seen_ids:
-                        seen_ids.add(rec['track_id'])
-                        rec['source'] = 'cbf'
-                        all_recs.append(rec)
-        except Exception as e:
-            print(f"CBF seed error for {seed_id}: {e}")
+
+    # build paramter for recommendation
+    param = {
+        'size': k,
+        'seeds': ','.join(fav_seeds),
+        fav_paramter: input_parameter
+    }
+
+    try:
+        url = f"{api.self.base_url}/track/recommendation" 
+        response = requests.get(url, headers=api.headers, params=param, timeout=15)
+        response.raise_for_status()
+
+        recomendation_data = response.json()
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return []
+
     
     # 4. Sort by similarity score and return top k
-    all_recs.sort(key=lambda x: x['similarity_score'], reverse=True)
-    return all_recs[:k]
+    # all_recs.sort(key=lambda x: x['similarity_score'], reverse=True)
+    # return all_recs[:k]
     
 
 def valid_recommendations(
