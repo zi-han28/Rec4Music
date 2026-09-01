@@ -445,7 +445,13 @@ def analyse_favourites(
                 'acousticness', 'instrumentalness', 'liveness', 'speechiness','key','mode']
     taste_profile = {}
     for key in All_keys:
-        values = [f[key] for f in feature_vectors]
+        values = [f[key] for f in feature_vectors if key in f and f[key] is not None]
+        if values is not None and values[key] != 'key' and values[key] !='mode':
+            taste_profile[key] = sum(values) / len(values)
+        if values[key]== 'key':
+            
+        
+        
 
     
 
