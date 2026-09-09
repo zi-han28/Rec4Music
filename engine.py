@@ -15,6 +15,8 @@ from pathlib import Path
 
 
 
+
+
 # knn model
 def train_knn(vectors: np.ndarray, n_neighbors: int = 10, scale: bool = True) -> Tuple['NearestNeighbors', np.ndarray, Optional['StandardScaler']]:
     """
@@ -262,7 +264,8 @@ class ReccobeatsAPI:
     
     def get_enhanced_recommendations(
         self, 
-        spotify_track_id: str,
+        spotify_track_id: Optional[str] = None,
+        seed_track_ids: Optional[List[str]] = None,
         initial_recommendations_count: int = 100,
         final_recommendations_count: int = 6,
         original_features: Optional[Dict] = None,
@@ -273,16 +276,18 @@ class ReccobeatsAPI:
         try:
             if original_features:
                 features = original_features
-            else:
-                features, _= self.get_audio_features(spotify_track_id)
+            elif spotify_track_id:
+                features, _ = self.get_audio_features(spotify_track_id)
                 if not features:
                     return []
+            else:
+                return []
             original_vector = self.extract_audio_features_vector(features)
-            
             
             # 2. Get initial recommendations
             initial_recs = self.get_recommendations(
-                spotify_track_id,
+                spotify_track_id=spotify_track_id,
+                seed_track_ids=seed_track_ids,
                 size=initial_recommendations_count,
                 **filters
             )
@@ -350,7 +355,8 @@ class ReccobeatsAPI:
 
     def get_valid_recommendations(
         self,
-        spotify_track_id: str,
+        spotify_track_id: Optional[str] = None,
+        seed_track_ids: Optional[str] = None,
         final_recommendations_count: int = 6,
         og_feature: Optional[Dict] = None,
         min_similarity: float = 0.7,
@@ -376,8 +382,9 @@ class ReccobeatsAPI:
             
             recs = self.get_enhanced_recommendations(
                 spotify_track_id=spotify_track_id,
+                seed_track_ids=seed_track_ids,
                 initial_recommendations_count=100,
-                final_recommendations_count=6,
+                final_recommendations_count=final_recommendations_count,
                 original_features=og_feature,
                 **round_filters
             )
@@ -385,7 +392,6 @@ class ReccobeatsAPI:
             if not recs:
                 continue
             
-            new_this_round = 0
             for rec in recs:
                 if rec['track_id'] in seen_track_ids:
                     continue
@@ -394,7 +400,6 @@ class ReccobeatsAPI:
                 
                 if rec['similarity_score'] >= min_similarity:
                     qualified_recs.append(rec)
-                    new_this_round += 1
             
             pop_label = f"popularity={pop_value}" if pop_value is not None else "no filter"
             print(f"Round {round_num + 1} ({pop_label}): {len(qualified_recs)}/{final_recommendations_count} qualified (>= {min_similarity*100:.0f}%)")
@@ -407,7 +412,14 @@ def analyse_favourites(
     exclude_ids: set = None
 ) -> List [Dict]:
     if not user_favourites:
-        return []
+        return {
+            'fav_trackID':[],
+            'std_factor': None,
+            'mean_factor': None,
+            'all_features': [],
+            'track_count': 0,
+            'taste_profile': {}
+        }
 
     api = ReccobeatsAPI()
     # to find the most prominent feature
@@ -425,7 +437,7 @@ def analyse_favourites(
             continue
         features, _= api.get_audio_features(track_id)
         if features:
-            feature_vectors.append(features)
+            feature_vectors.append(api.extract_audio_features_vector(features))
 
     # Stack into a matrix: rows = songs, columns = features
     matrix = np.array(feature_vectors)
@@ -441,74 +453,70 @@ def analyse_favourites(
         })
     results.sort(key=lambda x: x['std'])
 
-    All_keys = ['danceability', 'energy', 'valence', 'tempo', 'loudness',
-                'acousticness', 'instrumentalness', 'liveness', 'speechiness','key','mode']
+    # All keys including key and mode for taste profile
+    All_keys = feature_keys + ['key', 'mode']
     taste_profile = {}
     for key in All_keys:
         values = [f[key] for f in feature_vectors if key in f and f[key] is not None]
-        if values is not None and values[key] != 'key' and values[key] !='mode':
+        if not values:
+            continue        
+        if key== 'mode':
+            avg_mode = sum(values)/len(values)
+            taste_profile[key] = 1 if avg_mode >=0.5 else 0
+        else: 
             taste_profile[key] = sum(values) / len(values)
-        if values[key]== 'key':
-            
         
-        
-
-    
-
     return{
         'fav_trackIDs': fav_trackID,
         'std_factor': results[0]['feature'] if results else None,
         'mean_factor': results[0]['mean'] if results else None,
         'all_features': results,
-        'track_count': len(feature_vectors)
+        'track_count': len(feature_vectors),
+        'taste_profile': taste_profile
     }
     
 def get_recommendations_from_favourites(
     user_favourites: List[Dict],
     k: int = 6,
+    min_similarity: float = 0.7,
     exclude_ids: set = None
 ) -> List[Dict]:
     
     if not user_favourites:
         return []
     
-    api = ReccobeatsAPI()
-
     # get std_factor of fav tracks
     fav_analysis = analyse_favourites(user_favourites)
+    if not fav_analysis or fav_analysis['track_count'] == 0: # check if valid results
+        return []
+
+    taste_profile = fav_analysis['taste_profile']
+    if not taste_profile:
+        return []
+
+    fav_seeds = fav_analysis['fav_trackIDs']
+    if not fav_seeds:
+        return []
+    api = ReccobeatsAPI()   
+    
+    # get input and favourite parameter 
     fav_paramter = fav_analysis['std_factor']
     input_parameter = fav_analysis['mean_factor']
 
     # extract trackIDs from favourites
     fav_seeds = fav_analysis['fav_trackIDs']
+
     if len(fav_seeds)>=5:
         fav_seeds = random.sample(fav_seeds, 5)
         return fav_seeds
-
-    if not fav_seeds:
-        return []
-
-    # build paramter for recommendation
-    param = {
-        'size': k,
-        'seeds': ','.join(fav_seeds),
-        fav_paramter: input_parameter
-    }
-
-    try:
-        url = f"{api.self.base_url}/track/recommendation" 
-        response = requests.get(url, headers=api.headers, params=param, timeout=15)
-        response.raise_for_status()
-
-        recomendation_data = response.json()
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        return []
-
     
-    # 4. Sort by similarity score and return top k
-    # all_recs.sort(key=lambda x: x['similarity_score'], reverse=True)
-    # return all_recs[:k]
+    api = ReccobeatsAPI()
+    return api.get_valid_recommendations(
+        seed_track_ids=fav_seeds,
+        og_feature=taste_profile,
+        final_recommendations_count=k,
+        min_similarity=min_similarity
+    )
     
 
 def valid_recommendations(
