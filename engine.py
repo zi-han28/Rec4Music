@@ -1,6 +1,6 @@
 from urllib import response
 import random
-from altair import param
+
 import requests
 import numpy as np
 import pandas as pd
@@ -456,15 +456,11 @@ def analyse_favourites(
     # All keys including key and mode for taste profile
     All_keys = feature_keys + ['key', 'mode']
     taste_profile = {}
-    for key in All_keys:
-        values = [f[key] for f in feature_vectors if key in f and f[key] is not None]
-        if not values:
-            continue        
+    for i, key in enumerate(All_keys): 
         if key== 'mode':
-            avg_mode = sum(values)/len(values)
-            taste_profile[key] = 1 if avg_mode >=0.5 else 0
+            taste_profile[key] = 1 if mean[i] >=0.5 else 0
         else: 
-            taste_profile[key] = sum(values) / len(values)
+            taste_profile[key] = float(mean[i])
         
     return{
         'fav_trackIDs': fav_trackID,
@@ -505,6 +501,7 @@ def get_recommendations_from_favourites(
 
     # extract trackIDs from favourites
     fav_seeds = fav_analysis['fav_trackIDs']
+
 
     if len(fav_seeds)>=5:
         fav_seeds = random.sample(fav_seeds, 5)

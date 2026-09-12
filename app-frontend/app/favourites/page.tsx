@@ -12,6 +12,14 @@ interface FavouriteTrack {
   album_image: string | null;
 }
 
+interface favouriteRecommendation{
+  track_id: string;
+  track_name: string;
+  artist_name: string;
+  album_name: string;
+  album_image: string | null;
+}
+
 export default function FavouritesPage() {
   const [favourites, setFavourites] = useState<FavouriteTrack[]>([]);
   const [loading, setLoading] = useState(true);

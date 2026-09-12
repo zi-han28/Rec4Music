@@ -1,6 +1,6 @@
 import unittest
 from typing import List, Dict
-from engine import get_recommendations_from_favourites
+from engine import get_recommendations_from_favourites, analyse_favourites
 
 def test_get_recommendations_from_favourites():
     """
@@ -26,7 +26,9 @@ def test_get_recommendations_from_favourites():
     
     print(f"\n📊 Input: {len(user_favourites)} favourite tracks")
     print(f"Track IDs: {test_track_ids}\n")
-    
+    fav_analysis = analyse_favourites(user_favourites)
+    taste_profile = fav_analysis['taste_profile']
+    print(taste_profile)
     try:
         # Call the function
         print("🔄 Calling get_recommendations_from_favourites...")
@@ -34,7 +36,6 @@ def test_get_recommendations_from_favourites():
             user_favourites=user_favourites,
             k=6  # Request 6 recommendations
         )
-        
         # Check results
         if recommendations is None:
             print("❌ Function returned None")
