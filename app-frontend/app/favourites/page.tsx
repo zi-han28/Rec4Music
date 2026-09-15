@@ -15,9 +15,23 @@ interface FavouriteTrack {
 interface favouriteRecommendation{
   track_id: string;
   track_name: string;
-  artist_name: string;
-  album_name: string;
-  album_image: string | null;
+  artists: string;
+  similarity_score: number;
+  popularity: number | null;
+}
+
+interface tasteProfile{
+  danceability?: number;
+  energy?: number;
+  valence?: number;
+  tempo?: number;
+  loudness?: number;
+  acousticness?: number;
+  instrumentalness?: number;
+  liveness?: number;
+  speechiness?: number;
+  key?: number;
+  mode?: number;
 }
 
 export default function FavouritesPage() {
@@ -25,6 +39,10 @@ export default function FavouritesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [favRec, setRecommendations] = useState<favouriteRecommendation[]>([]);
+  const [tasteProfile, setTasteProfile] = useState<tasteProfile>({});
+  const [loadingRecs, setLoadingRecs] = useState(true);
+  const [recsError, setRecsError] = useState('');
   const router = useRouter();
 
 //   fetch favourties
@@ -97,6 +115,35 @@ export default function FavouritesPage() {
     }
   };
 
+  // display favourite recommendations
+  useEffect(()=>{
+    const fetchFavRec = async () =>{
+      const token = localStorage.getItem('access_token');
+      if(!token) return;
+      try{
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favourites/recommendations`, {headers: {Authorization:`Bearer ${token}`}});
+        if (res.status == 401){
+          localStorage.removeItem('access_token');
+          router.push('/login');
+          return;
+        }
+        if (!res.ok) throw new Error('Failed to fetch recommendations');
+
+        const data = await res.json();
+        setTasteProfile(data.taste_profile || {});
+        setLoadingRecs(true);
+        setRecommendations(data.recommendations?? []);
+      }catch(e){
+        setRecsError('could not load favourite recommendations')
+        setRecommendations([]);
+      }
+      finally{
+        setLoadingRecs(false);
+      }
+    };
+    fetchFavRec();
+  },[router]);
+
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-950 text-white px-6 py-10">
@@ -111,7 +158,7 @@ export default function FavouritesPage() {
   return (
     <main className="min-h-screen bg-gray-950 text-white px-6 py-10">
       <div className="container mx-auto max-w-2xl">
-        <h1 className="text-3xl font-bold mb-8">❤️ Your Favourites</h1>
+        <h1 className="text-3xl font-bold mb-8"> Your Favourites</h1>
 
         {error && <p className="text-red-400 mb-4">{error}</p>}
 
@@ -159,6 +206,51 @@ export default function FavouritesPage() {
             ))}
           </div>
         )}
+        <div className="mt-10">
+          <h2 className="text-2xl font-bold mb-4">Your taste profile</h2>
+          <p>Based on your favourited songs</p>
+          {loadingRecs ? (
+            <div className="flex items-center gap-3">
+              <div className="animate-spin h-5 w-5 border-2 border-purple-500 border-t-transparent rounded-full" />
+              <p className="text-gray-400">Analysing your taste...</p>
+            </div>): 
+            recsError ? (
+              <p className="text-red-400">{recsError}</p>
+            ) : (
+              <>
+                {Object.keys(tasteProfile).length>0 && (
+                  <div className="bg-gray-800 rounded-lg p-4 mb-6">
+                  <p className="text-sm text-gray-400 mb-2">Your taste profile</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                    {Object.entries(tasteProfile).map(([key, value]) => (
+                      <div key={key} className="text-gray-300">
+                        {key}: <span className="text-white">{Number(value).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                )}
+                {favRec.length>0 ? (
+                  <div className="flex flex-col gap-3">
+                    {favRec.map((rec) => (
+                      <div
+                        key={rec.track_id}
+                        onClick={() => router.push(`/track/${rec.track_id}`)}
+                        className="bg-gray-800 hover:bg-gray-700 rounded-lg p-4 cursor-pointer transition"
+                      >
+                        <p className="font-semibold">{rec.track_name}</p>
+                        <p className="text-gray-400 text-sm">{rec.artists}</p>
+                        <p className="text-purple-400 text-xs mt-1">
+                          {(rec.similarity_score * 100).toFixed(1)}% match
+                        </p>
+                      </div>
+                    ))}
+                </div>): (
+                  <p className="text-gray-500">No recommendations yet.</p>
+                )}
+              </>
+            )}
+        </div>
       </div>
     </main>
   );

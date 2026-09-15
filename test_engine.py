@@ -28,7 +28,10 @@ def test_get_recommendations_from_favourites():
     print(f"Track IDs: {test_track_ids}\n")
     fav_analysis = analyse_favourites(user_favourites)
     taste_profile = fav_analysis['taste_profile']
+    fav_parameter = fav_analysis['std_factor']
+    fav_input = fav_analysis['mean_factor']
     print(taste_profile)
+    print("fav_parameter:",fav_parameter, "fav_input:",fav_input)
     try:
         # Call the function
         print("🔄 Calling get_recommendations_from_favourites...")

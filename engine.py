@@ -187,6 +187,8 @@ class ReccobeatsAPI:
         spotify_track_id: Optional[str] = None,
         seed_track_ids: Optional[List[str]] = None,
         size: int = 6,  # Default size updated to 6
+        fav_parameter: Optional[str] = None,
+        fav_input: Optional[float] = None,
         **kwargs
     ) -> Optional[List[Dict[str, Any]]]:
         """Get track recommendations based on a Spotify track ID."""
@@ -196,9 +198,10 @@ class ReccobeatsAPI:
         
         params = {
             'size': size,
-            'seeds': ','.join(seeds)
+            'seeds': ','.join(seeds),
         }
-        
+        if fav_parameter and fav_input is not None:
+            params[fav_parameter] = fav_input
         # Add optional filters
         optional_params = ['acousticness', 'danceability', 'energy', 'instrumentalness', 
                           'key', 'liveness', 'loudness', 'mode', 'speechiness', 
@@ -213,7 +216,6 @@ class ReccobeatsAPI:
             response = requests.get(url, headers=self.headers, params=params, timeout=15)
             response.raise_for_status()
             recommendations_data = response.json()
-
             # if content doesn't exist return []
             return recommendations_data.get("content", [])
     
@@ -269,6 +271,8 @@ class ReccobeatsAPI:
         initial_recommendations_count: int = 100,
         final_recommendations_count: int = 6,
         original_features: Optional[Dict] = None,
+        fav_parameter: Optional[str] = None,
+        fav_input: Optional[float] = None,
         **filters) -> List[Dict]:
         """
         Get enhanced recommendations using K-NN filtering.
@@ -289,6 +293,8 @@ class ReccobeatsAPI:
                 spotify_track_id=spotify_track_id,
                 seed_track_ids=seed_track_ids,
                 size=initial_recommendations_count,
+                fav_parameter=fav_parameter,
+                fav_input=fav_input,
                 **filters
             )
             if not initial_recs:
@@ -360,6 +366,8 @@ class ReccobeatsAPI:
         final_recommendations_count: int = 6,
         og_feature: Optional[Dict] = None,
         min_similarity: float = 0.7,
+        fav_parameter: Optional[str] = None,
+        fav_input: Optional[float] = None,
         **filters
     ) -> List[Dict]:
      
@@ -386,6 +394,8 @@ class ReccobeatsAPI:
                 initial_recommendations_count=100,
                 final_recommendations_count=final_recommendations_count,
                 original_features=og_feature,
+                fav_parameter=fav_parameter,
+                fav_input=fav_input,
                 **round_filters
             )
             
@@ -475,14 +485,15 @@ def get_recommendations_from_favourites(
     user_favourites: List[Dict],
     k: int = 6,
     min_similarity: float = 0.7,
-    exclude_ids: set = None
+    exclude_ids: set = None,
+    precomputed_analysis: Optional[Dict] = None
 ) -> List[Dict]:
     
     if not user_favourites:
         return []
     
     # get std_factor of fav tracks
-    fav_analysis = analyse_favourites(user_favourites)
+    fav_analysis = precomputed_analysis 
     if not fav_analysis or fav_analysis['track_count'] == 0: # check if valid results
         return []
 
@@ -505,14 +516,15 @@ def get_recommendations_from_favourites(
 
     if len(fav_seeds)>=5:
         fav_seeds = random.sample(fav_seeds, 5)
-        return fav_seeds
     
     api = ReccobeatsAPI()
     return api.get_valid_recommendations(
         seed_track_ids=fav_seeds,
         og_feature=taste_profile,
         final_recommendations_count=k,
-        min_similarity=min_similarity
+        min_similarity=min_similarity,
+        fav_parameter=fav_paramter,
+        fav_input=input_parameter,
     )
     
 

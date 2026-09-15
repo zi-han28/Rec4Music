@@ -12,7 +12,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 
 from genius_api import get_lyrics_with_info
-from engine import ReccobeatsAPI, valid_recommendations, get_recommendations_from_favourites
+from engine import ReccobeatsAPI, valid_recommendations, get_recommendations_from_favourites, analyse_favourites
 from auth import (
     init_db, create_user, authenticate_user, 
     get_user_favourites, add_to_favourites, 
@@ -198,6 +198,7 @@ async def get_track_recommendations(track_id: str, k: int = 6):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching recommendations: {str(e)}")
 
+# favourites page
 @app.get("/favourites")
 async def list_favouites(username: str = Depends(get_current_username)):
     favourites = get_user_favourites(username)
@@ -227,6 +228,35 @@ async def check_favourite(
 ):
     return {"is_favourite": is_favourite(username, track_id)}
 
+@app.get("/favourites/recommendations")
+async def get_fav_recommendations(username:str = Depends(get_current_username)):
+    try:
+        user_favourites = get_user_favourites(username)
+        if not user_favourites:
+            return{"reccomendations": [], "taste_profile": {}}
+        # get taste profile
+        analysis = analyse_favourites(user_favourites)
+        taste_profile = analysis.get('taste_profile', {})
+
+        # get recommendations
+        recs = get_recommendations_from_favourites(user_favourites=user_favourites, precomputed_analysis=analysis)
+
+        return{
+            "recommendations":[
+                {
+                    "track_id": r["track_id"],
+                    "track_name": r["track_name"],
+                    "artists": r["artists"],
+                    "similarity_score": r["similarity_score"],
+                    "popularity": r.get("popularity")
+                }
+                for r in recs
+            ],
+            "taste_profile": taste_profile
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error feetching recommendations:{str(e)}")
+    
 @app.get("/health")
 async def health():
     return {"status": "ok"}
