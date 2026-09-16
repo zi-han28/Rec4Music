@@ -105,20 +105,6 @@ pyjwt
 
 ## File Structure
 
-- 📄 BERT_analysis.py
-  - Imports:
-    - import re
-    - import torch
-    - import transformers.AutoTokenizer
-    - import transformers.AutoModelForSequenceClassification
-  - Functions:
-    - run_unit_test
-  - Classes:
-    - SentimentAnalyzer
-  - Methods:
-    - __init__
-    - _clean_text
-    - analyze
 - 📁 app-frontend/
   - 📄 AGENTS.md
   - 📄 CLAUDE.md
@@ -133,6 +119,17 @@ pyjwt
         - Functions:
           - ForYou
     - 📄 favicon.ico
+    - 📁 favourites/
+      - 📄 page.tsx
+        - Imports:
+          - import { useEffect, useState } from 'react'
+          - import Image from 'next/image'
+          - import { useRouter } from 'next/navigation'
+        - Functions:
+          - FavouritesPage
+          - fetchFavourites
+          - handleRemove
+          - fetchFavRec
     - 📄 globals.css
     - 📄 layout.tsx
       - Imports:
@@ -175,6 +172,7 @@ pyjwt
           - import { useState } from 'react'
           - import Image from 'next/image'
           - import { useRouter } from 'next/navigation'
+          - import { json } from 'stream/consumers'
         - Functions:
           - SearchPage
           - handleSearch
@@ -189,6 +187,7 @@ pyjwt
           - Functions:
             - SongPage
             - fetchTrack
+            - toggleFavourite
             - fetchRecommendations
             - fetchLyrics
             - CloseLyrics
@@ -233,9 +232,8 @@ pyjwt
   - 📄 tsconfig.json
 - 📄 auth.py
   - Imports:
-    - import sqlite3
     - import bcrypt
-    - import json
+    - import db.users_collection
   - Functions:
     - init_db
     - create_user
@@ -244,8 +242,17 @@ pyjwt
     - add_to_favourites
     - remove_from_favourites
     - is_favourite
+- 📄 db.py
+  - Imports:
+    - import os
+    - import certifi
+    - import pymongo.MongoClient
+    - import dotenv.load_dotenv
+- 📄 dockerfile
 - 📄 engine.py
   - Imports:
+    - import urllib.response
+    - import random
     - import requests
     - import numpy as np
     - import pandas as pd
@@ -263,7 +270,8 @@ pyjwt
     - import pathlib.Path
   - Functions:
     - train_knn
-    - get_cbf_recommendations_from_favourites
+    - analyse_favourites
+    - get_recommendations_from_favourites
     - valid_recommendations
   - Classes:
     - ReccobeatsAPI
@@ -310,7 +318,8 @@ pyjwt
     - import genius_api.get_lyrics_with_info
     - import engine.ReccobeatsAPI
     - import engine.valid_recommendations
-    - import engine.get_cbf_recommendations_from_favourites
+    - import engine.get_recommendations_from_favourites
+    - import engine.analyse_favourites
     - import auth.(
     - import pydantic.BaseModel
     - import datetime.datetime
@@ -323,6 +332,16 @@ pyjwt
   - Classes:
     - UserCredentials
     - TokenResponse
+    - FavouriteTrack
 - 📄 project-structure.md
 - 📄 requirements.txt
+- 📄 test_engine.py
+  - Imports:
+    - import unittest
+    - import typing.List
+    - import typing.Dict
+    - import engine.get_recommendations_from_favourites
+    - import engine.analyse_favourites
+  - Functions:
+    - test_get_recommendations_from_favourites
 - 📄 users.db

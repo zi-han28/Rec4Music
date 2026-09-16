@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.git
+.gitignore
+app-frontend/
+node_modules/
+*.db
+.DS_Store
+README.md
