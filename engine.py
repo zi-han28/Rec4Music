@@ -1,6 +1,4 @@
-from urllib import response
 import random
-
 import requests
 import numpy as np
 import pandas as pd
@@ -12,10 +10,6 @@ from sklearn.neighbors import NearestNeighbors
 import os
 import pickle
 from pathlib import Path
-
-
-
-
 
 # knn model
 def train_knn(vectors: np.ndarray, n_neighbors: int = 10, scale: bool = True) -> Tuple['NearestNeighbors', np.ndarray, Optional['StandardScaler']]:
