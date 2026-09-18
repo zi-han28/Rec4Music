@@ -73,7 +73,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://rec4-music.vercel.app/"], 
+    allow_origins=["http://localhost:3000"],  # In production, replace with specific origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -86,7 +86,7 @@ client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
     
 os.environ["SPOTIPY_CLIENT_ID"] = client_id
 os.environ["SPOTIPY_CLIENT_SECRET"] = client_secret
-os.environ["SPOTIPY_REDIRECT_URI"] = "http://localhost:8501/callback"
+# os.environ["SPOTIPY_REDIRECT_URI"] = "http://localhost:8501/callback"
 
 sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials())
 

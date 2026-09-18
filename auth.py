@@ -4,7 +4,12 @@ from db import users_collection
 
 def init_db():
     """Ensure username is unique (equivalent of PRIMARY KEY)."""
-    users_collection.create_index("username", unique=True)
+    try:
+        users_collection.create_index("username", unique=True)
+        print("✅ Database initialized successfully")
+    except Exception as e:
+        print(f"❌ Failed to initialize database: {e}")
+        raise 
 
 def create_user(username, password):
     """Register a new user securely."""
