@@ -28,7 +28,6 @@ hf-xet==1.3.2
 httpcore==1.0.9
 httptools==0.7.1
 httpx==0.28.1
-huggingface_hub==1.5.0
 idna==3.11
 joblib==1.5.3
 jsonschema==4.26.0
@@ -59,9 +58,7 @@ redis==7.2.1
 referencing==0.37.0
 regex==2026.2.28
 requests==2.32.5
-rich==14.3.3
 rpds-py==0.30.0
-safetensors==0.7.0
 scikit-learn==1.8.0
 scipy==1.17.1
 setuptools==82.0.0
@@ -75,12 +72,7 @@ starlette==1.0.0
 sympy==1.14.0
 tenacity==9.1.4
 threadpoolctl==3.6.0
-tokenizers==0.22.2
-toml==0.10.2
-torch==2.10.0
-torchvision==0.25.0
 tqdm==4.67.3
-transformers==5.2.0
 typer==0.24.1
 typer-slim==0.24.0
 typing-inspection==0.4.2
@@ -245,7 +237,6 @@ yt-dlp==2026.8.19
     - import dotenv.load_dotenv
 - 📄 engine.py
   - Imports:
-    - import urllib.response
     - import random
     - import requests
     - import numpy as np
@@ -328,7 +319,6 @@ yt-dlp==2026.8.19
     - TokenResponse
     - FavouriteTrack
 - 📄 project-structure.md
-- 📄 railway.toml
 - 📄 requirements.txt
 - 📄 test_engine.py
   - Imports:
@@ -339,4 +329,10 @@ yt-dlp==2026.8.19
     - import engine.analyse_favourites
   - Functions:
     - test_get_recommendations_from_favourites
+- 📄 test_mongodb.py
+  - Imports:
+    - import os
+    - import pymongo.MongoClient
+    - import certifi
+    - import dotenv.load_dotenv
 - 📄 users.db

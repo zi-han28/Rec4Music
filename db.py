@@ -5,6 +5,13 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 
 load_dotenv()
+# TEMP DEBUG
+print("=== ENV DEBUG ===")
+print(f"MONGODB_URI present: {bool(os.getenv('MONGODB_URI'))}")
+print(f"MONGODB_URI value (first 30): {str(os.getenv('MONGODB_URI'))[:30]}")
+print(f"All env keys containing MONGO: {[k for k in os.environ if 'MONGO' in k.upper()]}")
+print(f"RAILWAY env vars: {[k for k in os.environ if k.startswith('RAILWAY')]}")
+print("=================")
 
 MONGODB_URI = os.getenv("MONGODB_URI")
 
