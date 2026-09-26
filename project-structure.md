@@ -92,6 +92,10 @@ yt-dlp==2026.8.19
 ## File Structure
 
 - 📄 Dockerfile
+- 📄 Llama-3.2-1B-Instruct-Q6_K.gguf
+- 📄 RAG.py
+  - Imports:
+    - import llama_cpp.Llama
 - 📁 app-frontend/
   - 📄 AGENTS.md
   - 📄 CLAUDE.md

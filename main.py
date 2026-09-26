@@ -18,6 +18,8 @@ from auth import (
     get_user_favourites, add_to_favourites, 
     remove_from_favourites, is_favourite)
 
+from RAG import describe_track
+
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 import jwt
@@ -256,6 +258,9 @@ async def get_fav_recommendations(username:str = Depends(get_current_username)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error feetching recommendations:{str(e)}")
+
+@app.get("/FYP/analysis")
+async def get_FYP_analysis(taste_profile: dict)-> str:
     
 @app.get("/health")
 async def health():
