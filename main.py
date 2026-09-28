@@ -13,10 +13,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 
 from genius_api import get_lyrics_with_info
 from engine import ReccobeatsAPI, valid_recommendations, get_recommendations_from_favourites, analyse_favourites
-from auth import (
-    init_db, create_user, authenticate_user, 
-    get_user_favourites, add_to_favourites, 
-    remove_from_favourites, is_favourite)
+from auth import init_db, create_user, authenticate_user, get_user_favourites, add_to_favourites, remove_from_favourites, is_favourite
 
 from RAG import describe_track
 
@@ -261,7 +258,15 @@ async def get_fav_recommendations(username:str = Depends(get_current_username)):
 
 @app.get("/FYP/analysis")
 async def get_FYP_analysis(taste_profile: dict)-> str:
-    
+    try:
+        generated_content = []
+        get_analysis = describe_track(taste_profile= taste_profile)
+        return{
+            "music_analysis":[get_analysis]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error feetching recommendations:{str(e)}")
+        
 @app.get("/health")
 async def health():
     return {"status": "ok"}
