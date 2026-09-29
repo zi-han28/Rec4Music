@@ -6,20 +6,24 @@ Files listed in .gitignore will be excluded.
 
 ### requirements.txt
 ```
+altair==6.0.0
 annotated-doc==0.0.4
 annotated-types==0.7.0
 anyio==4.12.1
 attrs==25.4.0
 bcrypt==5.0.0
 beautifulsoup4==4.14.3
+blinker==1.9.0
 cachetools==6.2.6
 certifi==2026.7.22
 charset-normalizer==3.4.4
 click==8.3.1
+diskcache==5.6.3
 dnspython==2.8.0
 duckdb==1.4.4
 fastapi==0.136.1
 filelock==3.25.0
+Flask==3.1.3
 fsspec==2026.2.0
 gitdb==4.0.12
 GitPython==3.1.46
@@ -28,12 +32,17 @@ hf-xet==1.3.2
 httpcore==1.0.9
 httptools==0.7.1
 httpx==0.28.1
+huggingface_hub==1.5.0
 idna==3.11
+itsdangerous==2.2.0
+Jinja2==3.1.6
 joblib==1.5.3
 jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
+llama_cpp_python==0.3.35
 lyricsgenius==3.7.6
 markdown-it-py==4.0.0
+MarkupSafe==3.0.3
 mdurl==0.1.2
 mpmath==1.3.0
 narwhals==2.17.0
@@ -46,6 +55,7 @@ protobuf==6.33.5
 pyarrow==23.0.1
 pydantic==2.13.4
 pydantic_core==2.46.4
+pydeck==0.9.1
 Pygments==2.19.2
 PyJWT==2.14.0
 pymongo==4.18.1
@@ -58,7 +68,9 @@ redis==7.2.1
 referencing==0.37.0
 regex==2026.2.28
 requests==2.32.5
+rich==14.3.3
 rpds-py==0.30.0
+safetensors==0.7.0
 scikit-learn==1.8.0
 scipy==1.17.1
 setuptools==82.0.0
@@ -72,7 +84,13 @@ starlette==1.0.0
 sympy==1.14.0
 tenacity==9.1.4
 threadpoolctl==3.6.0
+tokenizers==0.22.2
+toml==0.10.2
+torch==2.10.0
+torchvision==0.25.0
+tornado==6.5.4
 tqdm==4.67.3
+transformers==5.2.0
 typer==0.24.1
 typer-slim==0.24.0
 typing-inspection==0.4.2
@@ -86,17 +104,25 @@ websockets==16.0
 Werkzeug==3.1.6
 youtube-search-python==1.6.6
 yt-dlp==2026.8.19
-
 ```
 
 ## File Structure
 
+- 📄 .cache
+- 📄 .dockerignore
+- 📄 .gitignore
+- 📁 .vscode/
+  - 📄 settings.json
 - 📄 Dockerfile
-- 📄 Llama-3.2-1B-Instruct-Q6_K.gguf
 - 📄 RAG.py
   - Imports:
     - import llama_cpp.Llama
+  - Functions:
+    - humanize_taste_profile
+    - describe_track
 - 📁 app-frontend/
+  - 📄 .env.local
+  - 📄 .gitignore
   - 📄 AGENTS.md
   - 📄 CLAUDE.md
   - 📄 README.md
@@ -104,11 +130,13 @@ yt-dlp==2026.8.19
     - 📁 FYP/
       - 📄 page.tsx
         - Imports:
-          - import { useState } from 'react'
+          - import { useEffect, useState } from 'react'
           - import Image from 'next/image'
           - import { useRouter } from 'next/navigation'
         - Functions:
           - ForYou
+          - loadCached
+          - handleGenerate
     - 📄 favicon.ico
     - 📁 favourites/
       - 📄 page.tsx
@@ -233,6 +261,9 @@ yt-dlp==2026.8.19
     - add_to_favourites
     - remove_from_favourites
     - is_favourite
+    - save_analysis
+    - get_saved_analysis
+    - save_description
 - 📄 db.py
   - Imports:
     - import os
@@ -309,7 +340,17 @@ yt-dlp==2026.8.19
     - import engine.valid_recommendations
     - import engine.get_recommendations_from_favourites
     - import engine.analyse_favourites
-    - import auth.(
+    - import auth.init_db
+    - import auth.create_user
+    - import auth.authenticate_user
+    - import auth.get_user_favourites
+    - import auth.add_to_favourites
+    - import auth.remove_from_favourites
+    - import auth.is_favourite
+    - import auth.save_analysis
+    - import auth.get_saved_analysis
+    - import auth.save_description
+    - import RAG.describe_track
     - import pydantic.BaseModel
     - import datetime.datetime
     - import datetime.timedelta
@@ -318,25 +359,12 @@ yt-dlp==2026.8.19
   - Functions:
     - create_access_token
     - get_current_username
+    - get_cached_analysis
+    - get_fyp_analysis
+    - generate_fyp_analysis
   - Classes:
     - UserCredentials
     - TokenResponse
     - FavouriteTrack
 - 📄 project-structure.md
 - 📄 requirements.txt
-- 📄 test_engine.py
-  - Imports:
-    - import unittest
-    - import typing.List
-    - import typing.Dict
-    - import engine.get_recommendations_from_favourites
-    - import engine.analyse_favourites
-  - Functions:
-    - test_get_recommendations_from_favourites
-- 📄 test_mongodb.py
-  - Imports:
-    - import os
-    - import pymongo.MongoClient
-    - import certifi
-    - import dotenv.load_dotenv
-- 📄 users.db

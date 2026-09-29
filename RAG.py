@@ -80,8 +80,14 @@ def describe_track(taste_profile: dict) -> str:
         {"role": "system", "content": SYSTEM_PROMPT},
         # One few-shot example to anchor style and length
         # The real request
-        {"role": "user", "content": taste_profile},
+        {"role": "user", "content": profile_str},
     ]
 
-    output = llm.create_chat_completion(messages=messages, max_tokens=120, temperature=0.7)
+    output = llm.create_chat_completion(messages=messages, max_tokens=200, temperature=0.7)
     return output["choices"][0]["message"]["content"]
+
+if __name__ == "__main__":
+    audio_features = {
+        'danceability': 0.6915, 'energy': 0.6955, 'valence': 0.64725, 'tempo': 0.553146, 'loudness': 0.9279666666666666, 'acousticness': 0.2318225, 'instrumentalness': 0.00027635, 'liveness': 0.1827, 'speechiness': 0.06737499999999999, 'key': 0.3958333333333333, 'mode': 1
+    }
+    print(describe_track(taste_profile=audio_features))

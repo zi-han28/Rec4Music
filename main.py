@@ -13,7 +13,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 
 from genius_api import get_lyrics_with_info
 from engine import ReccobeatsAPI, valid_recommendations, get_recommendations_from_favourites, analyse_favourites
-from auth import init_db, create_user, authenticate_user, get_user_favourites, add_to_favourites, remove_from_favourites, is_favourite
+from auth import init_db, create_user, authenticate_user, get_user_favourites, add_to_favourites, remove_from_favourites, is_favourite, save_analysis, get_saved_analysis, save_description
 
 from RAG import describe_track
 
@@ -61,6 +61,16 @@ def get_current_username(credentials: HTTPAuthorizationCredentials = Depends(sec
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+def get_cached_analysis(username: str, user_favourites: list) -> dict:
+    current_ids = sorted(f["track_id"] for f in user_favourites)
+    cached = get_saved_analysis(username)
+    if cached and cached.get("track_ids") == current_ids:
+        return cached["analysis"]
+
+    analysis = analyse_favourites(user_favourites)
+    save_analysis(username, current_ids, analysis)
+    return analysis
 
 
 
@@ -234,7 +244,7 @@ async def get_fav_recommendations(username:str = Depends(get_current_username)):
         if not user_favourites:
             return{"reccomendations": [], "taste_profile": {}}
         # get taste profile
-        analysis = analyse_favourites(user_favourites)
+        analysis = get_cached_analysis(username, user_favourites)
         taste_profile = analysis.get('taste_profile', {})
 
         # get recommendations
@@ -257,16 +267,46 @@ async def get_fav_recommendations(username:str = Depends(get_current_username)):
         raise HTTPException(status_code=500, detail=f"Error feetching recommendations:{str(e)}")
 
 @app.get("/FYP/analysis")
-async def get_FYP_analysis(taste_profile: dict)-> str:
+def get_fyp_analysis(username: str = Depends(get_current_username)):
     try:
-        generated_content = []
-        get_analysis = describe_track(taste_profile= taste_profile)
-        return{
-            "music_analysis":[get_analysis]
+        user_favourites = get_user_favourites(username)
+        if not user_favourites:
+            return {"music_analysis": None, "message": "Add some favourites to get your taste analysis."}
+
+        analysis = get_cached_analysis(username, user_favourites)
+        taste_profile = analysis.get('taste_profile', {})
+        if not taste_profile:
+            return {"music_analysis": None, "message": "Couldn't build a taste profile yet."}
+
+        cached = get_saved_analysis(username)
+        description = cached.get("description") if cached else None
+        return {
+            "music_analysis": description,
+            "message": "" if description else "Click Generate to create your taste summary."
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error feetching recommendations:{str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating analysis: {str(e)}")
+
+@app.post("/FYP/analysis/generate")
+def generate_fyp_analysis(username: str = Depends(get_current_username)):
+    try:
+        user_favourites = get_user_favourites(username)
+        if not user_favourites:
+            raise HTTPException(status_code=400, detail="Add some favourites first.")
+        analysis = get_cached_analysis(username, user_favourites)
+        taste_profile = analysis.get('taste_profile', {})
+        if not taste_profile:
+                    return {"music_analysis": None, "message": "Couldn't build a taste profile yet."}
+        description = describe_track(taste_profile=taste_profile)
+        current_ids = sorted(f["track_id"] for f in user_favourites)
+        save_description(username, current_ids, description)
+        return {"music_analysis": description}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating analysis: {str(e)}")
         
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}

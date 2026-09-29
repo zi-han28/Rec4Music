@@ -79,3 +79,21 @@ def is_favourite(username, track_id):
     """Check if a track is in user's favourites."""
     favourites = get_user_favourites(username)
     return any(track['track_id'] == track_id for track in favourites)
+
+def save_analysis(username, track_ids, analysis):
+    # Cache the taste analysis alongside the favourite IDs it was computed from.
+    users_collection.update_one(
+        {"username": username},
+        {"$set": {"taste_analysis": {"track_ids": track_ids, "analysis": analysis, "description": None}}}
+    )
+
+def get_saved_analysis(username):
+    """Return the cached taste analysis for a user, or None."""
+    user = users_collection.find_one({"username": username}, {"taste_analysis": 1})
+    return user.get("taste_analysis") if user else None
+
+def save_description(username, track_ids, description):
+    users_collection.update_one(
+        {"username": username, "taste_analysis.track_ids": track_ids},
+        {"$set": {"taste_analysis.description": description}}
+    )
