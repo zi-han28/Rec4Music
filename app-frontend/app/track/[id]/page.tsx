@@ -86,29 +86,56 @@ export default function SongPage(){
             });
           } else {
             const res = await fetch (`${process.env.NEXT_PUBLIC_API_URL}/favourites`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
                 track_id: track.track_id,
                 track_name: track.track_name,
                 artist_name: track.artist,
                 album_name: track.album,
                 album_image: track.album_image,
-              }),
+            }),
             });
             if (!res.ok){
                 const errData = await res.json().catch(()=>null)
+                if (errData?.detail === 'Song already in favourites') {
+                    // Our local state was out of sync — just correct it, no error
+                    setFavouriteIds((prev) => new Set(prev).add(track.track_id));
+                    return;
+                }
                 throw new Error(errData?.detail ||'Failed to add new favourite');
             } 
             setFavouriteIds((prev) => new Set(prev).add(track.track_id));
-          }
-        }catch(err){
-          console.error(err)
         }
-      }
+        }catch(err){
+            console.error(err)
+        }
+    }
+
+    useEffect(()=>{
+        const checkIfFavourited = async ()=>{
+            const token = localStorage.getItem('access_token');
+            if (!token || !id) return;
+            try{
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favourites/${id}/check`, {headers: {Authorisation: `Bearer:${token}`}})
+                if (res.status === 401) {
+                    localStorage.removeItem('access_token');
+                    return;
+                }
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.is_favourite) {
+                        setFavouriteIds((prev) => new Set(prev).add(id as string));
+                    }
+                }
+            }catch(e){}
+        }
+        checkIfFavourited();
+    }, [id])
+    
     
     // load recommendations
     useEffect(() => {
