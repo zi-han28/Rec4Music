@@ -12,7 +12,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 
 from genius_api import get_lyrics_with_info
-from engine import ReccobeatsAPI, valid_recommendations, get_recommendations_from_favourites, analyse_favourites
+from engine import ReccobeatsAPI, get_recommendations_from_favourites, analyse_favourites
 from auth import init_db, create_user, authenticate_user, get_user_favourites, add_to_favourites, remove_from_favourites, is_favourite, save_analysis, get_saved_analysis, save_description
 
 from RAG import describe_track
@@ -65,7 +65,9 @@ def get_current_username(credentials: HTTPAuthorizationCredentials = Depends(sec
 def get_cached_analysis(username: str, user_favourites: list) -> dict:
     current_ids = sorted(f["track_id"] for f in user_favourites)
     cached = get_saved_analysis(username)
-    if cached and cached.get("track_ids") == current_ids:
+    if (cached
+            and cached.get("track_ids") == current_ids
+            and "key" in cached["analysis"].get("taste_profile", {})):
         return cached["analysis"]
 
     analysis = analyse_favourites(user_favourites)
@@ -95,7 +97,6 @@ client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
     
 os.environ["SPOTIPY_CLIENT_ID"] = client_id
 os.environ["SPOTIPY_CLIENT_SECRET"] = client_secret
-# os.environ["SPOTIPY_REDIRECT_URI"] = "http://localhost:8501/callback"
 
 sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials())
 

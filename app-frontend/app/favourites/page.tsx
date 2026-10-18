@@ -41,7 +41,8 @@ export default function FavouritesPage() {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [favRec, setRecommendations] = useState<favouriteRecommendation[]>([]);
   const [tasteProfile, setTasteProfile] = useState<tasteProfile>({});
-  const [loadingRecs, setLoadingRecs] = useState(true);
+  const [generatingRecommendations, setGeneratingRecommendations] = useState(false);
+  const [hasGenerated, setHasGenerated] = useState(false);
   const [recsError, setRecsError] = useState('');
   const router = useRouter();
 
@@ -116,33 +117,41 @@ export default function FavouritesPage() {
   };
 
   // display favourite recommendations
-  useEffect(()=>{
-    const fetchFavRec = async () =>{
-      const token = localStorage.getItem('access_token');
-      if(!token) return;
-      try{
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favourites/recommendations`, {headers: {Authorization:`Bearer ${token}`}});
-        if (res.status == 401){
-          localStorage.removeItem('access_token');
-          router.push('/login');
-          return;
-        }
-        if (!res.ok) throw new Error('Failed to fetch recommendations');
+  const handleGenerateRecommendations = async () => {
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    router.push('/login');
+    return;
+  }
 
-        const data = await res.json();
-        setTasteProfile(data.taste_profile || {});
-        setLoadingRecs(true);
-        setRecommendations(data.recommendations?? []);
-      }catch(e){
-        setRecsError('could not load favourite recommendations')
-        setRecommendations([]);
-      }
-      finally{
-        setLoadingRecs(false);
-      }
-    };
-    fetchFavRec();
-  },[router]);
+  setGeneratingRecommendations(true);
+  setRecsError('');
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/favourites/recommendations`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (res.status === 401) {
+      localStorage.removeItem('access_token');
+      router.push('/login');
+      return;
+    }
+    if (!res.ok) {
+      const errData = await res.json().catch(() => null);
+      throw new Error(errData?.detail || 'Failed to fetch recommendations');
+    }
+
+    const data = await res.json();
+    setTasteProfile(data.taste_profile ?? {});
+    setRecommendations(data.recommendations ?? []);
+    setHasGenerated(true);
+  } catch (e) {
+    setRecsError(e instanceof Error ? e.message : 'Could not load favourite recommendations');
+    setRecommendations([]);
+  } finally {
+    setGeneratingRecommendations(false);
+  }
+};
 
   if (loading) {
     return (
@@ -207,50 +216,63 @@ export default function FavouritesPage() {
           </div>
         )}
         <div className="mt-10">
-          <h2 className="text-2xl font-bold mb-4">Your taste profile</h2>
-          <p>Based on your favourited songs</p>
-          {loadingRecs ? (
-            <div className="flex items-center gap-3">
-              <div className="animate-spin h-5 w-5 border-2 border-purple-500 border-t-transparent rounded-full" />
-              <p className="text-gray-400">Analysing your taste...</p>
-            </div>): 
-            recsError ? (
-              <p className="text-red-400">{recsError}</p>
-            ) : (
-              <>
-                {Object.keys(tasteProfile).length>0 && (
-                  <div className="bg-gray-800 rounded-lg p-4 mb-6">
-                  <p className="text-sm text-gray-400 mb-2">Your taste profile</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
-                    {Object.entries(tasteProfile).map(([key, value]) => (
-                      <div key={key} className="text-gray-300">
-                        {key}: <span className="text-white">{Number(value).toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
+        <h2 className="text-2xl font-bold mb-2">Recommended for you</h2>
+        <p className="text-gray-400 text-sm mb-4">Based on your favourited songs</p>
+
+        <button
+          onClick={handleGenerateRecommendations}
+          disabled={generatingRecommendations || favourites.length === 0}
+          className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-lg transition-colors cursor-pointer flex items-center gap-2 mb-6"
+        >
+          {generatingRecommendations && (
+            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+          )}
+          {generatingRecommendations
+            ? 'Finding songs...'
+            : hasGenerated
+              ? '🔄 Refresh recommendations'
+              : '✨ Get recommendations'}
+        </button>
+
+        {recsError && <p className="text-red-400 mb-4">{recsError}</p>}
+
+        {hasGenerated && !generatingRecommendations && (
+          <>
+            {Object.keys(tasteProfile).length > 0 && (
+              <div className="bg-gray-800 rounded-lg p-4 mb-6">
+                <p className="text-sm text-gray-400 mb-2">Your taste profile</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                  {Object.entries(tasteProfile).map(([key, value]) => (
+                    <div key={key} className="text-gray-300">
+                      {key}: <span className="text-white">{Number(value).toFixed(2)}</span>
+                    </div>
+                  ))}
                 </div>
-                )}
-                {favRec.length>0 ? (
-                  <div className="flex flex-col gap-3">
-                    {favRec.map((rec) => (
-                      <div
-                        key={rec.track_id}
-                        onClick={() => router.push(`/track/${rec.track_id}`)}
-                        className="bg-gray-800 hover:bg-gray-700 rounded-lg p-4 cursor-pointer transition"
-                      >
-                        <p className="font-semibold">{rec.track_name}</p>
-                        <p className="text-gray-400 text-sm">{rec.artists}</p>
-                        <p className="text-purple-400 text-xs mt-1">
-                          {(rec.similarity_score * 100).toFixed(1)}% match
-                        </p>
-                      </div>
-                    ))}
-                </div>): (
-                  <p className="text-gray-500">No recommendations yet.</p>
-                )}
-              </>
+              </div>
             )}
-        </div>
+
+            {favRec.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {favRec.map((rec) => (
+                  <div
+                    key={rec.track_id}
+                    onClick={() => router.push(`/track/${rec.track_id}`)}
+                    className="bg-gray-800 hover:bg-gray-700 rounded-lg p-4 cursor-pointer transition"
+                  >
+                    <p className="font-semibold">{rec.track_name}</p>
+                    <p className="text-gray-400 text-sm">{rec.artists}</p>
+                    <p className="text-purple-400 text-xs mt-1">
+                      {(rec.similarity_score * 100).toFixed(1)}% match
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500">No recommendations yet.</p>
+            )}
+          </>
+        )}
+      </div>
       </div>
     </main>
   );

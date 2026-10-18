@@ -120,7 +120,7 @@ export default function SongPage(){
             const token = localStorage.getItem('access_token');
             if (!token || !id) return;
             try{
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favourites/${id}/check`, {headers: {Authorisation: `Bearer:${token}`}})
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favourites/${id}/check`, {headers: {Authorization: `Bearer:${token}`}})
                 if (res.status === 401) {
                     localStorage.removeItem('access_token');
                     return;

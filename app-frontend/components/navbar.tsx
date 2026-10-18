@@ -11,7 +11,7 @@ export default function Navbar() {
 
   return (
     <nav className="bg-gray-950 border-b border-gray-800">
-      <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-9 p-4">
+      <div className="max-w-7xl flex flex-wrap items-center justify-between mx-9 p-4">
         {/* Logo */}
         <Link href="/" className="flex">
           <span className="text-2xl font-semibold text-white">
@@ -25,15 +25,13 @@ export default function Navbar() {
             <>
               <button
                 type="button"
-                className="flex items-center gap-2 text-sm bg-gray-800 rounded-full px-4 py-2
-                           hover:bg-gray-700 transition cursor-pointer"
+                className="flex items-center gap-2 text-sm bg-gray-800 rounded-full px-4 py-2 hover:bg-gray-700 transition cursor-pointer"
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
                 <span className="text-white">{username}</span>
               </button>
 
               {isDropdownOpen && (
-                <div className="absolute top-[52px] right-0 w-48 bg-gray-800 divide-y
-                                 divide-gray-700 rounded-lg shadow-lg z-50">
+                <div className="absolute top-52px right-0 w-48 bg-gray-800 divide-y divide-gray-700 rounded-lg shadow-lg z-50">
                   <div className="px-4 py-3">
                     <span className="block text-sm text-white">Logged in as</span>
                     <span className="block text-sm text-gray-400 truncate">{username}</span>

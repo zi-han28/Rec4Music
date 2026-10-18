@@ -121,7 +121,6 @@ yt-dlp==2026.8.19
     - humanize_taste_profile
     - describe_track
 - 📁 app-frontend/
-  - 📄 .env.local
   - 📄 .gitignore
   - 📄 AGENTS.md
   - 📄 CLAUDE.md
@@ -207,6 +206,7 @@ yt-dlp==2026.8.19
             - SongPage
             - fetchTrack
             - toggleFavourite
+            - checkIfFavourited
             - fetchRecommendations
             - fetchLyrics
             - CloseLyrics
@@ -237,7 +237,6 @@ yt-dlp==2026.8.19
         - login
         - logout
         - useAuth
-  - 📄 next-env.d.ts
   - 📄 next.config.ts
   - 📄 package-lock.json
   - 📄 package.json
@@ -337,7 +336,6 @@ yt-dlp==2026.8.19
     - import spotipy.oauth2.SpotifyClientCredentials
     - import genius_api.get_lyrics_with_info
     - import engine.ReccobeatsAPI
-    - import engine.valid_recommendations
     - import engine.get_recommendations_from_favourites
     - import engine.analyse_favourites
     - import auth.init_db
@@ -368,3 +366,15 @@ yt-dlp==2026.8.19
     - FavouriteTrack
 - 📄 project-structure.md
 - 📄 requirements.txt
+- 📄 test_engine.py
+  - Imports:
+    - import engine.ReccobeatsAPI
+  - Functions:
+    - test_single_track_recommendations
+- 📄 test_mongodb.py
+  - Imports:
+    - import os
+    - import pymongo.MongoClient
+    - import certifi
+    - import dotenv.load_dotenv
+- 📄 users.db

@@ -256,160 +256,107 @@ class ReccobeatsAPI:
                 }
         
         return reccobeats_ids, rec_map
-
     
-    def get_enhanced_recommendations(
-        self, 
-        spotify_track_id: Optional[str] = None,
-        seed_track_ids: Optional[List[str]] = None,
-        initial_recommendations_count: int = 100,
-        final_recommendations_count: int = 6,
-        original_features: Optional[Dict] = None,
-        fav_parameter: Optional[str] = None,
-        fav_input: Optional[float] = None,
-        **filters) -> List[Dict]:
-        """
-        Get enhanced recommendations using K-NN filtering.
-        """
-        try:
-            if original_features:
-                features = original_features
-            elif spotify_track_id:
-                features, _ = self.get_audio_features(spotify_track_id)
-                if not features:
-                    return []
-            else:
-                return []
-            original_vector = self.extract_audio_features_vector(features)
-            
-            # 2. Get initial recommendations
-            initial_recs = self.get_recommendations(
-                spotify_track_id=spotify_track_id,
-                seed_track_ids=seed_track_ids,
-                size=initial_recommendations_count,
-                fav_parameter=fav_parameter,
-                fav_input=fav_input,
-                **filters
-            )
-            if not initial_recs:
-                return []
-            
-            # 3. Process metadata & extract IDs from
-            reccobeats_ids, rec_map = self.rec_metadata(initial_recs)
-
-            if not reccobeats_ids:
-                return []
-
-            # 4. Batch fetch audio features for recommendations
-            batch_features = self.get_batch_AF(reccobeats_ids)
-            features_by_id = {f.get('id'): f for f in batch_features if f.get('id')}
-            
-            # 5. Prepare data for K-NN
-            recs_with_features = []
-            for rid in reccobeats_ids:
-                if rid in features_by_id and rid in rec_map:
-                    feat_vec = self.extract_audio_features_vector(features_by_id[rid])
-                    meta = rec_map[rid]
-                    recs_with_features.append({
-                        'track_id': meta['spotify_track_id'],
-                        'track_name': meta['track_title'],
-                        'artists': meta['artists'],
-                        'feature_vector': feat_vec,
-                        'popularity': meta['popularity'],
-                        'spotify_url': meta['spotify_url'],
-                        'reccobeats_id': rid  # Store for fallback
-                    })
-
-            # 6. Run K-NN
-            vectors = np.array([original_vector] + [r['feature_vector'] for r in recs_with_features])
-            knn, scaled_vectors, _= train_knn(vectors, n_neighbors=final_recommendations_count + 1)
-            distances, indices= knn.kneighbors(scaled_vectors[0:1])
-            
-            final_recs = []
-            for i, neighbor_idx in enumerate(indices[0]):
-                if neighbor_idx == 0: continue # Skip self
-                
-                rec_idx = neighbor_idx - 1 # Adjust for offset
-                if 0 <= rec_idx < len(recs_with_features):
-                    rec = recs_with_features[rec_idx]
-                    similarity = 1 - distances[0][i]
-                    
-                    # Weight by popularity (optional)
-                    weighted_score = (0.9 * similarity) + (0.1 * (rec['popularity'] / 100.0))
-                    
-                    final_recs.append({
-                        'track_id': rec['track_id'],
-                        'track_name': rec['track_name'],
-                        'artists': rec['artists'],
-                        'similarity_score': weighted_score,
-                        'popularity': rec['popularity'],
-                        'reccobeats_id': rec['reccobeats_id']
-                    })
-            
-            final_recs.sort(key=lambda x: x['similarity_score'], reverse=True)
-            return final_recs[:final_recommendations_count]
-            
-        except Exception as e:
-            print(f"Error in enhanced recommendations: {e}")
-            return []
-
     def get_valid_recommendations(
         self,
         spotify_track_id: Optional[str] = None,
-        seed_track_ids: Optional[str] = None,
+        seed_track_ids: Optional[List[str]] = None,
         final_recommendations_count: int = 6,
         og_feature: Optional[Dict] = None,
-        min_similarity: float = 0.7,
+        min_similarity: float = 0.5,
         fav_parameter: Optional[str] = None,
         fav_input: Optional[float] = None,
         **filters
     ) -> List[Dict]:
-     
-        # Wrapper around get_enhanced_recommendations that retries with
-        # different popularity tiers until final_recommendations_count
-        # songs above min_similarity are collected.
-     
-        qualified_recs = []
+        # Resolve the target profile once, not once per round
+        if og_feature:
+            features = og_feature
+        elif spotify_track_id:
+            features, _ = self.get_audio_features(spotify_track_id)
+        else:
+            features = None
+        if not features:
+            return []
+        original_vector = self.extract_audio_features_vector(features)
+
+        popularity_tiers = [100, 90, 80, 70, 60, 50, 40, 30, 20, 10] * 2
+        qualified_recs: List[Dict] = []
         seen_track_ids = set()
-        # 
-        popularity_tiers = [100,90,80,70,60,50,40,30,20,10,100,90,80,70,60,50,40,30,20,10]
-        for round_num, pop_value in enumerate(popularity_tiers):
+
+        for round_num, pop_value in enumerate(popularity_tiers, start=1):
             if len(qualified_recs) >= final_recommendations_count:
                 break
-            
-            # Build filters for this round
-            round_filters = dict(filters)
-            if pop_value is not None:
-                round_filters['popularity'] = pop_value
-            
-            recs = self.get_enhanced_recommendations(
-                spotify_track_id=spotify_track_id,
-                seed_track_ids=seed_track_ids,
-                initial_recommendations_count=100,
-                final_recommendations_count=final_recommendations_count,
-                original_features=og_feature,
-                fav_parameter=fav_parameter,
-                fav_input=fav_input,
-                **round_filters
-            )
-            
-            if not recs:
-                continue
-            
-            for rec in recs:
-                if rec['track_id'] in seen_track_ids:
+            print(f"Round {round_num} (popularity={pop_value}): "
+                f"{len(qualified_recs)}/{final_recommendations_count} qualified "
+                f"(>= {min_similarity * 100:.0f}%)")
+
+            try:
+                # 1. Candidate pool for this popularity tier
+                initial_recs = self.get_recommendations(
+                    spotify_track_id=spotify_track_id,
+                    seed_track_ids=seed_track_ids,
+                    size=100,
+                    fav_parameter=fav_parameter,
+                    fav_input=fav_input,
+                    **{**filters, 'popularity': pop_value},
+                )
+                if not initial_recs:
                     continue
-                
-                seen_track_ids.add(rec['track_id'])
-                
-                if rec['similarity_score'] >= min_similarity:
-                    qualified_recs.append(rec)
-            
-            pop_label = f"popularity={pop_value}" if pop_value is not None else "no filter"
-            print(f"Round {round_num + 1} ({pop_label}): {len(qualified_recs)}/{final_recommendations_count} qualified (>= {min_similarity*100:.0f}%)")
-        
-        qualified_recs.sort(key=lambda x: x['similarity_score'], reverse=True)
+
+                # 2. Skip tracks already scored in earlier rounds
+                reccobeats_ids, rec_map = self.rec_metadata(initial_recs)
+                new_ids = [rid for rid in reccobeats_ids
+                        if rec_map[rid]['spotify_track_id'] not in seen_track_ids]
+                if not new_ids:
+                    continue
+
+                # 3. Audio features for the new candidates only
+                batch_features = self.get_batch_AF(new_ids)
+                features_by_id = {f.get('id'): f for f in batch_features if f.get('id')}
+                candidates = [
+                    {
+                        'track_id': rec_map[rid]['spotify_track_id'],
+                        'track_name': rec_map[rid]['track_title'],
+                        'artists': rec_map[rid]['artists'],
+                        'popularity': rec_map[rid]['popularity'],
+                        'reccobeats_id': rid,
+                        'feature_vector': self.extract_audio_features_vector(features_by_id[rid]),
+                    }
+                    for rid in new_ids if rid in features_by_id
+                ]
+                if not candidates:
+                    continue
+
+                # 4. K-NN: score every candidate against the target profile
+                vectors = np.array([original_vector] + [c['feature_vector'] for c in candidates])
+                knn, scaled, _ = train_knn(vectors, n_neighbors=len(vectors))
+                distances, indices = knn.kneighbors(scaled[0:1])
+
+                # 5. Weighted score; keep candidates above the threshold
+                for dist, idx in zip(distances[0], indices[0]):
+                    if idx == 0:
+                        continue  # the target profile itself
+                    c = candidates[idx - 1]
+                    seen_track_ids.add(c['track_id'])
+                    score = 0.9 * (1 - dist) + 0.1 * ((c['popularity'] or 0) / 100.0)
+                    if score >= min_similarity:
+                        qualified_recs.append({
+                            'track_id': c['track_id'],
+                            'track_name': c['track_name'],
+                            'artists': c['artists'],
+                            'similarity_score': score,
+                            'popularity': c['popularity'],
+                            'reccobeats_id': c['reccobeats_id'],
+                        })
+
+            except Exception as e:
+                # One bad round (e.g. an API hiccup) shouldn't abort the whole search
+                print(f"Round {round_num} failed: {e}")
+
+        qualified_recs.sort(key=lambda r: r['similarity_score'], reverse=True)
         return qualified_recs[:final_recommendations_count]
+
+    
 
 def analyse_favourites(
     user_favourites: List [Dict],
@@ -460,10 +407,10 @@ def analyse_favourites(
     # All keys including key and mode for taste profile
     All_keys = feature_keys + ['key', 'mode']
     taste_profile = {}
-    for i, key in enumerate(All_keys): 
-        if key== 'mode':
-            taste_profile[key] = 1 if mean[i] >=0.5 else 0
-        else: 
+    for i, key in enumerate(All_keys):
+        if key == 'mode':
+            taste_profile[key] = 1 if mean[i] >= 0.5 else 0
+        else:
             taste_profile[key] = float(mean[i])
         
     return{
@@ -478,7 +425,7 @@ def analyse_favourites(
 def get_recommendations_from_favourites(
     user_favourites: List[Dict],
     k: int = 6,
-    min_similarity: float = 0.7,
+    min_similarity: float =0.5,
     exclude_ids: set = None,
     precomputed_analysis: Optional[Dict] = None
 ) -> List[Dict]:

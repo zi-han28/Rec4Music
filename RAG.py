@@ -2,9 +2,10 @@ from llama_cpp import Llama
 
 llm = Llama(model_path="Llama-3.2-1B-Instruct-Q6_K.gguf", n_ctx=2048, verbose=False)
 
-def humanize_taste_profile(profile: dict) -> dict:
-    """Convert normalized (0-1) taste-profile values back to real-world units."""
+PITCH_CLASSES = ['C', 'C♯/D♭', 'D', 'D♯/E♭', 'E', 'F', 'F♯/G♭', 'G', 'G♯/A♭', 'A', 'A♯/B♭', 'B']
 
+def humanize_taste_profile(profile: dict) -> dict:
+    k = round(profile.get('key', 0) * 12 - 1)
     return {
         'danceability': round(profile['danceability'], 2),
         'energy': round(profile['energy'], 2),
@@ -15,9 +16,19 @@ def humanize_taste_profile(profile: dict) -> dict:
         'instrumentalness': round(profile['instrumentalness'], 3),
         'liveness': round(profile['liveness'], 2),
         'speechiness': round(profile['speechiness'], 2),
-        'key': max(0, min(11, round(profile['key']*11))),
-        'mode': 'major' if profile['mode'] == 1 else 'minor',
+        'key': PITCH_CLASSES[k] if 0 <= k <= 11 else 'unknown',
+        'mode': 'major' if profile.get('mode', 1) == 1 else 'minor',
     }
+
+def describe_track(taste_profile: dict) -> str:
+    profile_str = ", ".join(f"{k}: {v}" for k, v in humanize_taste_profile(taste_profile).items())
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        *ANCHOR_EXAMPLES,
+        {"role": "user", "content": profile_str},
+    ]
+    output = llm.create_chat_completion(messages=messages, max_tokens=200, temperature=0.7)
+    return output["choices"][0]["message"]["content"]
 
 
 SYSTEM_PROMPT = (
